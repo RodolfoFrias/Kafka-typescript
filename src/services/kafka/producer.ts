@@ -1,6 +1,7 @@
 
 import { Kafka } from 'kafkajs'
-import logger from '@shared/Logger';
+import logger from '@shared/Logger'
+import { IUser } from '@entities/User';
 
 class Producer {
     topic: string
@@ -16,7 +17,7 @@ class Producer {
         this.producer = this.kafka.producer()
     }
 
-    public async disconnect(): Promise<any> {
+    public async disconnect(): Promise<void> {
         await this.producer.disconnect()
     }
 
@@ -25,10 +26,10 @@ class Producer {
         await this.producer.connect()
     }
 
-    public async send(message: JSON): Promise<any> {
-        return this.producer.send({
+    public async send(message: IUser): Promise<any> {
+       return this.producer.send({
             topic: this.topic,
-            messages: message
+            messages: [{ value: JSON.stringify(message), key: message.id }]
         })
     }
 }

@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 
 import UserDao from '@daos/User/UserDao.mock';
 import { paramMissingError } from '@shared/constants';
+import producer from '@kafka/producer';
 
 const userDao = new UserDao();
 const { BAD_REQUEST, CREATED, OK } = StatusCodes;
@@ -36,6 +37,7 @@ export async function addOneUser(req: Request, res: Response) {
             error: paramMissingError,
         });
     }
+    await producer.send(user)
     await userDao.add(user);
     return res.status(CREATED).end();
 }
