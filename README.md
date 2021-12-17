@@ -1,3 +1,3 @@
-## Kafka App
+# Kafka App
 
-Simple appication using kafkajs and typescript
+Simple application using [KafkaJS](https://kafka.js.org/) and [Typescript](https://www.typescriptlang.org/).
