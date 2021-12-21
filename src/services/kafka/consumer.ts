@@ -1,33 +1,59 @@
-import { Kafka, EachMessagePayload  } from 'kafkajs'
+import { 
+    Consumer, 
+    ConsumerSubscribeTopic, 
+    EachBatchPayload, 
+    Kafka
+} from 'kafkajs'
 import logger from '@shared/Logger'
 
-class Consumer {
-    private kafka: Kafka
-    private consumer: any
-    constructor() {
-        this.kafka = new Kafka({
-            clientId: 'kafka-consumer',
-            brokers: ['localhost:29092']
+class ConsumerFactory {
+    private kafkaConsumer: Consumer
+  
+    public constructor() {
+      this.kafkaConsumer = this.createKafkaConsumer()
+    }
+  
+  
+    public async startBatchConsumer(): Promise<void> {
+      const topic: ConsumerSubscribeTopic = {
+        topic: 'example-topic',
+        fromBeginning: false
+      }
+  
+      try {
+        await this.kafkaConsumer.connect()
+        await this.kafkaConsumer.subscribe(topic)
+        await this.kafkaConsumer.run({
+          eachBatch: async (eachBatchPayload: EachBatchPayload) => {
+            const { topic, partition, batch } = eachBatchPayload
+            for (const message of batch.messages) {
+              const prefix = `${topic}[${partition} | ${message.offset}] / ${message.timestamp}`
+              logger.info(`- ${prefix} ${message.key}#${message.value}`) 
+              this.processBatch(eachBatchPayload)
+            }
+          }
         })
-        this.consumer = this.kafka.consumer({ groupId: 'kafka-consumer' })
+      } catch (error) {
+        logger.err('Error: ' + error)
+      }
+    }
+  
+    public async shutdown(): Promise<void> {
+      await this.kafkaConsumer.disconnect()
+    }
+  
+    private createKafkaConsumer(): Consumer {
+      const kafka = new Kafka({ 
+        clientId: 'client-id',
+        brokers: ['example.kafka.broker:9092']
+      })
+      return kafka.consumer({ groupId: 'consumer-group' })
     }
 
-    async disconnect() { 
-        await this.consumer.disconnect()
+    public processBatch(batch: EachBatchPayload): void {
+        logger.info(`Sending batch: ${batch}`)
     }
 
-    async init() {
-        logger.info('[Kafka] Consumer init')
-        await this.consumer.connect()
-        await this.consumer.subscribe({ topic: 'test' })
-        await this.consumer.run({
-            eachMessage: async (messagePayload: EachMessagePayload) => {
-                const { topic, partition, message } = messagePayload
-                const prefix = `${topic}[${partition} | ${message.offset}] / ${message.timestamp}`
-                logger.info(`- ${prefix} ${message.key}#${message.value}`)
-              }
-        })
-    }
 }
 
-export default new Consumer()
+export default ConsumerFactory

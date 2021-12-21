@@ -1,37 +1,54 @@
 
-import { Kafka } from 'kafkajs'
+import { Kafka, logCreator, logLevel, Producer, ProducerBatch } from 'kafkajs'
 import logger from '@shared/Logger'
 import { IUser } from '@entities/User';
 
-class Producer {
-    topic: string
-    private producer: any
-    private kafka: any
+class ProducerFactory {
+    private producer: Producer
 
-    constructor(){
-        this.topic = 'test'
-        this.kafka = new Kafka({
-            brokers: [`localhost:29092`],
-            clientId: 'example-producer',
-        })
-        this.producer = this.kafka.producer()
+    constructor() {
+      this.producer = this.createProducer()
     }
-
-    public async disconnect(): Promise<void> {
-        await this.producer.disconnect()
-    }
-
-    public async run(): Promise<void> {
-        logger.info(`Running kafka producer with topic ${this.topic}`)
+  
+    public async start(): Promise<void> {
+      try {
         await this.producer.connect()
+      } catch (error) {
+        logger.err('Error connecting the producer:' + error)
+      }
     }
-
-    public async send(message: IUser): Promise<any> {
-       return this.producer.send({
-            topic: this.topic,
-            messages: [{ value: JSON.stringify(message), key: message.id }]
-        })
+  
+    public async shutdown(): Promise<void> {
+      await this.producer.disconnect()
+    }
+  
+    public async sendBatch(messages: Array<IUser>): Promise<void> {
+      const kafkaMessages = messages.map((message) => {
+        return {
+          value: JSON.stringify(message)
+        }
+      })
+  
+      const topicMessages = {
+        topic: 'producer-topic',
+        messages: kafkaMessages
+      }
+  
+      const batch: ProducerBatch = {
+        topicMessages: [topicMessages]
+      }
+  
+      await this.producer.sendBatch(batch)
+    }
+  
+    private createProducer() : Producer {
+      const kafka = new Kafka({
+        clientId: 'producer-client',
+        brokers: ['localhost:9092'],
+      })
+  
+      return kafka.producer()
     }
 }
 
-export default new Producer()
+export default ProducerFactory
