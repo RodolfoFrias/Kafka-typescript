@@ -56,4 +56,4 @@ class ConsumerFactory {
 
 }
 
-export default ConsumerFactory
+export default new ConsumerFactory()

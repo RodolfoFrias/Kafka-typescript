@@ -51,4 +51,4 @@ class ProducerFactory {
     }
 }
 
-export default ProducerFactory
+export default new ProducerFactory()

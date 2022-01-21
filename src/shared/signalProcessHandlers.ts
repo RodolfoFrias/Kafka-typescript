@@ -3,28 +3,34 @@ const errorTypes = ['unhandledRejection', 'uncaughtException']
 const signalTraps = ['SIGTERM', 'SIGINT', 'SIGUSR2']
 import producer from '@kafka/producer'
 import consumer from '@kafka/consumer'
+import logger from './Logger'
 
-errorTypes.map(type => {
-  process.on(type, async () => {
-    try {
-      await producer.disconnect()
-      await consumer.disconnect()
-      console.log(`process.on ${type}`)
-      await 
-      process.exit(0)
-    } catch (_) {
-      process.exit(1)
-    }
+for (const errorType of errorTypes) {
+  process.on(errorType, () => {
+      Promise.all([
+        producer.shutdown(),
+        consumer.shutdown()
+      ]).then(() => { 
+        logger.info('All promises resolved, exiting process');
+        process.exit(0)
+      })
+      .catch(() => {
+        process.exit(1)
+      })
   })
-})
+}
 
-signalTraps.map(type => {
-  process.once(type, async () => {
-    try {
-      await producer.disconnect()
-      await consumer.disconnect()
-    } finally {
-      process.kill(process.pid, type)
-    }
+for (const signalTrap of signalTraps) {
+  process.on(signalTrap, () => {
+      Promise.all([
+        producer.shutdown(),
+        consumer.shutdown()
+      ]).then(() => { 
+        logger.info('All promises resolved, exiting process');
+        process.exit(0)
+      })
+      .catch(() => {
+        process.kill(process.pid, signalTrap)
+      })
   })
-})
+}
