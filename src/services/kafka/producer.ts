@@ -14,7 +14,8 @@ class ProducerFactory {
       try {
         await this.producer.connect()
       } catch (error) {
-        logger.err('Error connecting the producer:' + error)
+        const newError = new Error(`Error connecting to the producer ${error}`)
+        logger.err(newError)
       }
     }
   
@@ -23,11 +24,7 @@ class ProducerFactory {
     }
   
     public async sendBatch(messages: Array<IUser>): Promise<void> {
-      const kafkaMessages = messages.map((message) => {
-        return {
-          value: JSON.stringify(message)
-        }
-      })
+      const kafkaMessages = messages.map((message) => { value: JSON.stringify(message) })
   
       const topicMessages = {
         topic: 'producer-topic',
@@ -37,7 +34,7 @@ class ProducerFactory {
       const batch: ProducerBatch = {
         topicMessages: [topicMessages]
       }
-  
+
       await this.producer.sendBatch(batch)
     }
   

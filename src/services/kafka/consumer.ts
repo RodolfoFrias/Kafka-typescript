@@ -13,7 +13,6 @@ class ConsumerFactory {
       this.kafkaConsumer = this.createKafkaConsumer()
     }
   
-  
     public async startBatchConsumer(): Promise<void> {
       const topic: ConsumerSubscribeTopic = {
         topic: 'example-topic',
@@ -34,7 +33,8 @@ class ConsumerFactory {
           }
         })
       } catch (error) {
-        logger.err('Error: ' + error)
+        const newError = new Error(`There was an error processing the batch: ${error}`)
+        logger.err(newError)
       }
     }
   

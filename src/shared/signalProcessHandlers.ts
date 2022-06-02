@@ -5,16 +5,17 @@ import producer from '@kafka/producer'
 import consumer from '@kafka/consumer'
 import logger from './Logger'
 
+const successMessage = 'Producer and consumer have been shut down successfully, exiting process'
+
 for (const errorType of errorTypes) {
   process.on(errorType, () => {
       Promise.all([
         producer.shutdown(),
         consumer.shutdown()
       ]).then(() => { 
-        logger.info('All promises resolved, exiting process');
+        logger.info(successMessage);
         process.exit(0)
-      })
-      .catch(() => {
+      }).catch(() => {
         process.exit(1)
       })
   })
@@ -26,10 +27,9 @@ for (const signalTrap of signalTraps) {
         producer.shutdown(),
         consumer.shutdown()
       ]).then(() => { 
-        logger.info('All promises resolved, exiting process');
+        logger.info(successMessage);
         process.exit(0)
-      })
-      .catch(() => {
+      }).catch(() => {
         process.kill(process.pid, signalTrap)
       })
   })
