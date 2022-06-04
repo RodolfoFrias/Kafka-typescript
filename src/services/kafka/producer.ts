@@ -5,6 +5,10 @@ import {
 interface CustomMessageFormat { a: string }
 
 class ProducerFactory {
+  static shutdown(): any {
+    throw new Error('Method not implemented.');
+  }
+
   private producer: Producer;
 
   private kafka: Kafka;

@@ -11,6 +11,10 @@ interface Configuration {
 }
 
 class ConsumerFactory {
+  static shutdown(): any {
+    throw new Error('Method not implemented.');
+  }
+
   private kafkaConsumer: Consumer;
 
   private logger;

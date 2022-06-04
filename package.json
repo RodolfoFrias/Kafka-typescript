@@ -55,7 +55,8 @@
       "@typescript-eslint/no-floating-promises": 0,
       "@typescript-eslint/no-unsafe-member-access": 0,
       "@typescript-eslint/no-unsafe-assignment": 0,
-      "linebreak-style":"off"
+      "linebreak-style":"off",
+      "no-restricted-syntax": "off"
     }
   },
   "eslintIgnore": [
