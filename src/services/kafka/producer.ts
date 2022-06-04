@@ -1,22 +1,32 @@
 import {
-  Kafka, logCreator, logLevel, Producer, ProducerBatch,
+  Kafka, Producer, ProducerBatch, TopicMessages,
 } from 'kafkajs';
-import logger from '@shared/Logger';
-import { IUser } from '@entities/User';
+
+interface CustomMessageFormat { a: string }
 
 class ProducerFactory {
   private producer: Producer;
 
-  constructor() {
+  private kafka: Kafka;
+
+  private logger: any;
+
+  private topicName: string;
+
+  constructor(kafkaClient: Kafka, logger: any, topicName: string) {
     this.producer = this.createProducer();
+    this.kafka = kafkaClient;
+    this.logger = logger;
+    this.topicName = topicName;
   }
 
   public async start(): Promise<void> {
     try {
       await this.producer.connect();
     } catch (error) {
-      const newError = new Error(`Error connecting to the producer ${error}`);
-      logger.err(newError);
+      const newError = new Error(`Error connecting to the producer ${JSON.stringify(error)}`);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+      this.logger.err(newError);
     }
   }
 
@@ -24,11 +34,12 @@ class ProducerFactory {
     await this.producer.disconnect();
   }
 
-  public async sendBatch(messages: Array<IUser>): Promise<void> {
-    const kafkaMessages = messages.map((message) => { JSON.stringify(message); });
-
-    const topicMessages = {
-      topic: 'producer-topic',
+  public async sendBatch(messages: Array<CustomMessageFormat>): Promise<void> {
+    const kafkaMessages: Array<any> = messages.map((message) => ({
+      value: JSON.stringify(message),
+    }));
+    const topicMessages: TopicMessages = {
+      topic: this.topicName,
       messages: kafkaMessages,
     };
 
@@ -40,13 +51,8 @@ class ProducerFactory {
   }
 
   private createProducer() : Producer {
-    const kafka = new Kafka({
-      clientId: 'producer-client',
-      brokers: ['localhost:9092'],
-    });
-
-    return kafka.producer();
+    return this.kafka.producer();
   }
 }
 
-export default new ProducerFactory();
+export default ProducerFactory;
