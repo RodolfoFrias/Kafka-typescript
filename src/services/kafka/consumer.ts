@@ -1,33 +1,79 @@
-import { Kafka, EachMessagePayload  } from 'kafkajs'
-import logger from '@shared/Logger'
+import {
+  Consumer,
+  ConsumerSubscribeTopic,
+  EachMessagePayload,
+  Kafka,
+} from 'kafkajs';
 
-class Consumer {
-    private kafka: Kafka
-    private consumer: any
-    constructor() {
-        this.kafka = new Kafka({
-            clientId: 'kafka-consumer',
-            brokers: ['localhost:29092']
-        })
-        this.consumer = this.kafka.consumer({ groupId: 'kafka-consumer' })
-    }
-
-    async disconnect() { 
-        await this.consumer.disconnect()
-    }
-
-    async init() {
-        logger.info('[Kafka] Consumer init')
-        await this.consumer.connect()
-        await this.consumer.subscribe({ topic: 'test' })
-        await this.consumer.run({
-            eachMessage: async (messagePayload: EachMessagePayload) => {
-                const { topic, partition, message } = messagePayload
-                const prefix = `${topic}[${partition} | ${message.offset}] / ${message.timestamp}`
-                logger.info(`- ${prefix} ${message.key}#${message.value}`)
-              }
-        })
-    }
+interface Configuration {
+  groupId: string;
+  topicName: string;
 }
 
-export default new Consumer()
+class ConsumerFactory {
+  static shutdown(): any {
+    throw new Error('Method not implemented.');
+  }
+
+  private kafkaConsumer: Consumer;
+
+  private logger;
+
+  private callback: (message: EachMessagePayload) => Promise<void>;
+
+  private kafka: Kafka;
+
+  private configuration: Configuration;
+
+  private groupId: string;
+
+  private topicName: string;
+
+  public constructor(
+    kafkaClient: Kafka,
+    loggerClass: any,
+    functionTorun: () => Promise<void>,
+    configuration: Configuration,
+  ) {
+    this.kafka = kafkaClient;
+    this.kafkaConsumer = this.createKafkaConsumer();
+    this.logger = loggerClass;
+    this.callback = functionTorun;
+    this.configuration = configuration;
+    this.groupId = this.configuration.groupId;
+    this.topicName = this.configuration.topicName;
+  }
+
+  public async startBatchConsumer(): Promise<void> {
+    const topic: ConsumerSubscribeTopic = {
+      topic: 'example-topic',
+      fromBeginning: false,
+    };
+
+    try {
+      await this.kafkaConsumer.connect();
+      await this.kafkaConsumer.subscribe(topic);
+      await this.kafkaConsumer.run({
+        eachMessage: async (messagePayload: EachMessagePayload) => {
+          await this.callback(messagePayload);
+        },
+      });
+    } catch (error) {
+      const newError = new Error(
+        `There was an error processing the batch: ${JSON.stringify(error)}`,
+      );
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+      this.logger.err(newError);
+    }
+  }
+
+  public async shutdown(): Promise<void> {
+    await this.kafkaConsumer.disconnect();
+  }
+
+  private createKafkaConsumer(): Consumer {
+    return this.kafka.consumer({ groupId: 'consumer-group' });
+  }
+}
+
+export default ConsumerFactory;

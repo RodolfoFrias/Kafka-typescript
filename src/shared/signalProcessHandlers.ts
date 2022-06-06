@@ -1,30 +1,36 @@
+import producer from '@kafka/producer';
+import consumer from '@kafka/consumer';
+import logger from './Logger';
 
-const errorTypes = ['unhandledRejection', 'uncaughtException']
-const signalTraps = ['SIGTERM', 'SIGINT', 'SIGUSR2']
-import producer from '@kafka/producer'
-import consumer from '@kafka/consumer'
+const errorTypes = ['unhandledRejection', 'uncaughtException'];
+const signalTraps = ['SIGTERM', 'SIGINT', 'SIGUSR2'];
 
-errorTypes.map(type => {
-  process.on(type, async () => {
-    try {
-      await producer.disconnect()
-      await consumer.disconnect()
-      console.log(`process.on ${type}`)
-      await 
-      process.exit(0)
-    } catch (_) {
-      process.exit(1)
-    }
-  })
-})
+const successMessage = 'Producer and consumer have been shut down successfully, exiting process';
 
-signalTraps.map(type => {
-  process.once(type, async () => {
-    try {
-      await producer.disconnect()
-      await consumer.disconnect()
-    } finally {
-      process.kill(process.pid, type)
-    }
-  })
-})
+for (const errorType of errorTypes) {
+  process.on(errorType, () => {
+    Promise.all([
+      producer.shutdown(),
+      consumer.shutdown(),
+    ]).then(() => {
+      logger.info(successMessage);
+      process.exit(0);
+    }).catch(() => {
+      process.exit(1);
+    });
+  });
+}
+
+for (const signalTrap of signalTraps) {
+  process.on(signalTrap, () => {
+    Promise.all([
+      producer.shutdown(),
+      consumer.shutdown(),
+    ]).then(() => {
+      logger.info(successMessage);
+      process.exit(0);
+    }).catch(() => {
+      process.kill(process.pid, signalTrap);
+    });
+  });
+}

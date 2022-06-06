@@ -1,37 +1,62 @@
+import {
+  Kafka, Producer, ProducerBatch, TopicMessages,
+} from 'kafkajs';
 
-import { Kafka } from 'kafkajs'
-import logger from '@shared/Logger'
-import { IUser } from '@entities/User';
+interface CustomMessageFormat { a: string }
 
-class Producer {
-    topic: string
-    private producer: any
-    private kafka: any
+class ProducerFactory {
+  static shutdown(): any {
+    throw new Error('Method not implemented.');
+  }
 
-    constructor(){
-        this.topic = 'test'
-        this.kafka = new Kafka({
-            brokers: [`localhost:29092`],
-            clientId: 'example-producer',
-        })
-        this.producer = this.kafka.producer()
+  private producer: Producer;
+
+  private kafka: Kafka;
+
+  private logger: any;
+
+  private topicName: string;
+
+  constructor(kafkaClient: Kafka, logger: any, topicName: string) {
+    this.producer = this.createProducer();
+    this.kafka = kafkaClient;
+    this.logger = logger;
+    this.topicName = topicName;
+  }
+
+  public async start(): Promise<void> {
+    try {
+      await this.producer.connect();
+    } catch (error) {
+      const newError = new Error(`Error connecting to the producer ${JSON.stringify(error)}`);
+      // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+      this.logger.err(newError);
     }
+  }
 
-    public async disconnect(): Promise<void> {
-        await this.producer.disconnect()
-    }
+  public async shutdown(): Promise<void> {
+    await this.producer.disconnect();
+  }
 
-    public async run(): Promise<void> {
-        logger.info(`Running kafka producer with topic ${this.topic}`)
-        await this.producer.connect()
-    }
+  public async sendBatch(messages: Array<CustomMessageFormat>): Promise<void> {
+    const kafkaMessages: Array<any> = messages.map((message) => ({
+      value: JSON.stringify(message),
+    }));
+    const topicMessages: TopicMessages = {
+      topic: this.topicName,
+      messages: kafkaMessages,
+    };
 
-    public async send(message: IUser): Promise<any> {
-       return this.producer.send({
-            topic: this.topic,
-            messages: [{ value: JSON.stringify(message), key: message.id }]
-        })
-    }
+    const batch: ProducerBatch = {
+      topicMessages: [topicMessages],
+    };
+
+    await this.producer.sendBatch(batch);
+  }
+
+  private createProducer() : Producer {
+    return this.kafka.producer();
+  }
 }
 
-export default new Producer()
+export default ProducerFactory;
